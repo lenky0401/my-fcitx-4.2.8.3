@@ -227,7 +227,7 @@ void ResetPunc(void* arg)
 {
     FcitxPuncState* puncState = (FcitxPuncState*) arg;
     puncState->bLastIsNumber = false;
-    puncState->cLastIsAutoConvert = '\0';
+//    puncState->cLastIsAutoConvert = '\0';
 }
 
 void ResetPuncWhichStatus(void* arg)
@@ -289,6 +289,7 @@ boolean ProcessPunc(void* arg, FcitxKeySym sym, unsigned int state, INPUT_RETURN
     FcitxKeySym origsym = sym;
     sym = FcitxHotkeyPadToMain(sym);
     if (profile->bUseWidePunc) {
+        /*
         if (puncState->bLastIsNumber && config->bEngPuncAfterNumber
             && (FcitxHotkeyIsHotKey(origsym, state, FCITX_PERIOD)
                 || FcitxHotkeyIsHotKey(origsym, state, FCITX_SEMICOLON)
@@ -298,6 +299,7 @@ boolean ProcessPunc(void* arg, FcitxKeySym sym, unsigned int state, INPUT_RETURN
             *retVal = IRV_DONOT_PROCESS;
             return true;
         }
+        */
         if (FcitxHotkeyIsHotKeySimple(sym, state))
             pPunc = GetPunc(puncState, origsym);
     }
@@ -314,6 +316,7 @@ boolean ProcessPunc(void* arg, FcitxKeySym sym, unsigned int state, INPUT_RETURN
         /* if there is nothing to commit */
         if (ret == IRV_TO_PROCESS) {
             if (pPunc) {
+                puncState->cLastIsAutoConvert = origsym;
                 strcat(FcitxInputStateGetOutputString(input), pPunc);
                 *retVal = IRV_PUNC;
                 FcitxInstanceCleanInputWindow(instance);
@@ -338,17 +341,53 @@ boolean ProcessPunc(void* arg, FcitxKeySym sym, unsigned int state, INPUT_RETURN
 
     if (profile->bUseWidePunc) {
         if (FcitxHotkeyIsHotKey(sym, state, FCITX_BACKSPACE)
-            && puncState->cLastIsAutoConvert) {
-            char *pPunc;
-
-            FcitxInstanceForwardKey(puncState->owner, FcitxInstanceGetCurrentIC(instance), FCITX_PRESS_KEY, sym, state);
-            pPunc = GetPunc(puncState, puncState->cLastIsAutoConvert);
-            if (pPunc)
-                FcitxInstanceCommitString(puncState->owner, FcitxInstanceGetCurrentIC(instance), pPunc);
-
+            && puncState->cLastIsAutoConvert) 
+        {
+            FcitxInstanceForwardKey(puncState->owner, 
+                FcitxInstanceGetCurrentIC(instance), FCITX_PRESS_KEY, 
+                sym, state);
+            
+            char buf[2] = { puncState->cLastIsAutoConvert, 0 };
+            FcitxInstanceCommitString(puncState->owner, 
+                FcitxInstanceGetCurrentIC(instance), buf);
             puncState->cLastIsAutoConvert = 0;
             *retVal = IRV_DO_NOTHING;
             return true;
+            
+        } else if (FcitxHotkeyIsHotKeyDigit(sym, state) 
+            && puncState->cLastIsAutoConvert) 
+        {
+    
+            if (puncState->cLastIsAutoConvert == '^' ||
+                puncState->cLastIsAutoConvert == '_')
+            {
+                FcitxInstanceForwardKey(puncState->owner, 
+                    FcitxInstanceGetCurrentIC(instance), 
+                    FCITX_PRESS_KEY, FcitxKey_BackSpace, 0);
+                FcitxInstanceForwardKey(puncState->owner, 
+                    FcitxInstanceGetCurrentIC(instance), 
+                    FCITX_RELEASE_KEY, FcitxKey_BackSpace, 0);
+            }
+            FcitxInstanceForwardKey(puncState->owner, 
+                FcitxInstanceGetCurrentIC(instance), 
+                FCITX_PRESS_KEY, FcitxKey_BackSpace, 0);
+            FcitxInstanceForwardKey(puncState->owner, 
+                FcitxInstanceGetCurrentIC(instance), 
+                FCITX_RELEASE_KEY, FcitxKey_BackSpace, 0);
+            
+            usleep(10000);
+
+            char buf[2] = { puncState->cLastIsAutoConvert, 0 };
+            FcitxInstanceCommitString(puncState->owner, 
+                FcitxInstanceGetCurrentIC(instance), buf);
+
+            
+            //FcitxInstanceForwardKey(puncState->owner, 
+            //    FcitxInstanceGetCurrentIC(instance), FCITX_PRESS_KEY, 
+            //    sym, state);
+            //puncState->cLastIsAutoConvert = 0;
+            //*retVal = IRV_DO_NOTHING;
+            //return true;
         } else if (FcitxHotkeyIsHotKeyDigit(sym, state)) {
             puncState->bLastIsNumber = true;
         } else {
