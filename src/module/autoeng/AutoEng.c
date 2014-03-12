@@ -239,7 +239,7 @@ AutoEngPushKey(FcitxAutoEngState *autoEngState, char key)
             FcitxInstance *instance = autoEngState->owner;
             FcitxInputContext *currentIC = FcitxInstanceGetCurrentIC(instance);
             FcitxInstanceCommitString(instance, currentIC, autoEngState->buf);
-            FcitxInstanceCommitString(instance, currentIC, " ");
+//            FcitxInstanceCommitString(instance, currentIC, " ");
             ResetAutoEng(autoEngState);
             return res | IRV_CLEAN;
         }
@@ -583,11 +583,45 @@ void FreeAutoEng(void* arg)
     fcitx_utils_free(autoEngState->back_buff);
 }
 
+static boolean isEmailType(const char *string)
+{
+	boolean nameStr = false;
+	boolean atChar = false;
+	
+	if (!string)
+		return false;
+	
+	for (; *string != '\0'; string ++) 
+	{
+		if ((*string >= 'a' && *string <= 'z'))
+			nameStr = true;
+		
+		if (*string == '@')
+		{
+			if (!nameStr)
+				break;
+			atChar = true;
+		}
+		
+		if (!((*string >= 'a' && *string <= 'z') || *string == '@'))
+			break;
+	}
+	
+	if (nameStr && atChar)
+		return true;
+	
+	return false;
+}
+
 boolean SwitchToEng(FcitxAutoEngState *autoEngState, const char *str)
 {
     AUTO_ENG *autoeng;
     if (!AutoEngCheckPreedit(autoEngState))
         return false;
+
+	if (isEmailType(str))
+		return true;
+	
     for (autoeng = (AUTO_ENG*)utarray_front(autoEngState->autoEng);
          autoeng != NULL;
          autoeng = (AUTO_ENG*)utarray_next(autoEngState->autoEng, autoeng))
@@ -683,7 +717,8 @@ ShowAutoEngMessage(FcitxAutoEngState *autoEngState, INPUT_RETURN_VALUE *retval)
     AutoEngGetSpellHint(autoEngState);
     FcitxMessagesAddMessageStringsAtLast(FcitxInputStateGetAuxDown(input),
                                          MSG_TIPS,
-                                         _("Press Enter to input text"));
+                                         //_("Press Enter to input text"));
+                                         " ");
     *retval |= IRV_FLAG_UPDATE_INPUT_WINDOW;
 }
 
